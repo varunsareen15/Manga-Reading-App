@@ -64,7 +64,6 @@ int main(int argc, char *argv[]) {
       // --- 1. HANDLE TEXT INPUT (When G is active) ---
       else if (input_mode) {
         if (event.type == SDL_TEXTINPUT) {
-          // Only append numbers
           if (isdigit(event.text.text[0]) && strlen(input_buffer) < 5) {
             strcat(input_buffer, event.text.text);
           }
@@ -76,19 +75,18 @@ int main(int argc, char *argv[]) {
               input_buffer[len - 1] = '\0';
             break;
           }
-          case SDLK_RETURN: // Enter Key -> Confirm
+          case SDLK_RETURN:
           case SDLK_KP_ENTER: {
             int page = atoi(input_buffer);
             if (page > 0 && page <= book.count) {
               book.current_index = page - 1;
               refresh_page(&book, &app);
             }
-            // Reset and exit input mode
             input_mode = 0;
             SDL_StopTextInput();
             break;
           }
-          case SDLK_ESCAPE: // Cancel
+          case SDLK_ESCAPE:
             input_mode = 0;
             SDL_StopTextInput();
             break;
@@ -123,19 +121,20 @@ int main(int argc, char *argv[]) {
           changed = 1;
           break;
 
-        case SDLK_HOME:
+        // --- NEW: B for Beginning, E for End ---
+        case SDLK_b:
           book.current_index = 0;
           changed = 1;
           break;
-        case SDLK_END:
+        case SDLK_e:
           book.current_index = book.count - 1;
           changed = 1;
           break;
 
         case SDLK_g: // Start Input Mode
           input_mode = 1;
-          input_buffer[0] = '\0'; // Clear buffer
-          SDL_StartTextInput();   // Enable text events
+          input_buffer[0] = '\0';
+          SDL_StartTextInput();
           break;
 
         case SDLK_f:
@@ -158,8 +157,6 @@ int main(int argc, char *argv[]) {
 
     snprintf(overlay_text, sizeof(overlay_text), "%d / %d",
              book.current_index + 1, book.count);
-
-    // Pass input_buffer only if input_mode is ON
     render_frame(&app, overlay_text, input_mode ? input_buffer : NULL);
   }
 

@@ -68,7 +68,7 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 | **Right Arrow** | **Previous Page** (Goes back) |
 | **Shift + Left** | **Skip Forward 10 Pages** |
 | **Shift + Right** | **Skip Backward 10 Pages** |
-| **Home / End** | Jump to First / Last Page |
+| **B / E** | Jump to First / Last Page |
 | **G** | **Go to Page** (Opens input box) |
 | **F** | Toggle Fullscreen Mode |
 | **ESC** | Cancel Input / Exit Fullscreen / Quit |
