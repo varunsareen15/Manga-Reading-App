@@ -9,6 +9,7 @@ A lightweight, cross-platform manga reader written in C. It reads `.cbz` files d
 * **High Quality Rendering:** Uses Anisotropic/Linear filtering and High-DPI support to prevent pixelation on modern screens.
 * **Smart Navigation:** Includes "Go to Page" jump, 10-page skipping, and standard manga (RTL) controls.
 * **Page Counter:** Visual overlay showing current progress (e.g., "5 / 200").
+* **Automatic Bookmarks:** Saves page progress when you close a volume/chapter so you can pick up where you left off.
 * **Modular Architecture:** Clean separation between App Logic, Zip Handling, and Rendering.
 
 ## Prerequisites
@@ -86,17 +87,20 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 
 ```text
 manga_reader/
-├── Makefile            # Build configuration (run 'make' here)
-├── README.md           # Project documentation
-├── font.ttf            # Required font file (User provided)
-├── include/            # Header files (.h)
-│   ├── cbz_handler.h   # Definitions for Zip extraction & Image handling
-│   └── render_engine.h # Definitions for SDL2 windowing & texture logic
-├── src/                # Source code (.c)
-│   ├── main.c          # Entry point, Event Loop, & Input handling
-│   ├── cbz_handler.c   # Logic for reading .cbz archives from memory
-│   └── render_engine.c # Logic for high-DPI rendering & scaling
-└── build/              # Intermediate object files (generated automatically)
+├── Makefile                    # Build configuration (run 'make' here)
+├── README.md                   # Project documentation
+├── bookmarks.txt               # Database file for bookmarks (generated automatically) 
+├── font.ttf                    # Required font file (User provided)
+├── include/                    # Header files (.h)
+│   ├── bookmark_manager.h      # Definitions for Bookmarks 
+│   ├── cbz_handler.h           # Definitions for Zip extraction & Image handling
+│   └── render_engine.h         # Definitions for SDL2 windowing & texture logic
+├── src/                        # Source code (.c)
+│   ├── main.c                  # Entry point, Event Loop, & Input handling
+│   ├── bookmark_manager.c      # Logic for loading and saving bookmarks 
+│   ├── cbz_handler.c           # Logic for reading .cbz archives from memory
+│   └── render_engine.c         # Logic for high-DPI rendering & scaling
+└── build/                      # Intermediate object files (generated automatically)
 ```
 
 ## License
