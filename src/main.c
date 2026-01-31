@@ -1,6 +1,7 @@
+#include "bookmark_manager.h" 
 #include "cbz_handler.h"
 #include "render_engine.h"
-#include <ctype.h> // for isdigit
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // --- NEW: Load Bookmark ---
+  int saved_page = load_bookmark(argv[1]);
+  if (saved_page > 0 && saved_page < book.count) {
+    book.current_index = saved_page;
+    printf("Resuming %s at page %d\n", argv[1], saved_page + 1);
+  }
+
   AppContext app;
   if (init_sdl(&app, 800, 1000) != 0) {
     printf("Failed to init SDL.\n");
@@ -52,17 +60,15 @@ int main(int argc, char *argv[]) {
   SDL_Event event;
   char overlay_text[32];
 
-  // --- Input Mode State ---
-  int input_mode = 0;         // 0 = reading, 1 = typing page num
-  char input_buffer[10] = ""; // Store typed number
+  // Input Mode State
+  int input_mode = 0;
+  char input_buffer[10] = "";
 
   while (running) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) {
         running = 0;
-      }
-      // --- 1. HANDLE TEXT INPUT (When G is active) ---
-      else if (input_mode) {
+      } else if (input_mode) {
         if (event.type == SDL_TEXTINPUT) {
           if (isdigit(event.text.text[0]) && strlen(input_buffer) < 5) {
             strcat(input_buffer, event.text.text);
@@ -92,14 +98,12 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
-      }
-      // --- 2. HANDLE NORMAL NAVIGATION (Reading) ---
-      else if (event.type == SDL_KEYDOWN) {
+      } else if (event.type == SDL_KEYDOWN) {
         int changed = 0;
         int shift = SDL_GetModState() & KMOD_SHIFT;
 
         switch (event.key.keysym.sym) {
-        case SDLK_LEFT: // Next Page (Manga)
+        case SDLK_LEFT:
           if (shift) {
             book.current_index += 10;
             if (book.current_index >= book.count)
@@ -110,7 +114,7 @@ int main(int argc, char *argv[]) {
           changed = 1;
           break;
 
-        case SDLK_RIGHT: // Prev Page
+        case SDLK_RIGHT:
           if (shift) {
             book.current_index -= 10;
             if (book.current_index < 0)
@@ -121,7 +125,6 @@ int main(int argc, char *argv[]) {
           changed = 1;
           break;
 
-        // --- NEW: B for Beginning, E for End ---
         case SDLK_b:
           book.current_index = 0;
           changed = 1;
@@ -131,7 +134,7 @@ int main(int argc, char *argv[]) {
           changed = 1;
           break;
 
-        case SDLK_g: // Start Input Mode
+        case SDLK_g:
           input_mode = 1;
           input_buffer[0] = '\0';
           SDL_StartTextInput();
@@ -159,6 +162,9 @@ int main(int argc, char *argv[]) {
              book.current_index + 1, book.count);
     render_frame(&app, overlay_text, input_mode ? input_buffer : NULL);
   }
+
+  // --- NEW: Save Bookmark on Exit ---
+  save_bookmark(argv[1], book.current_index);
 
   close_cbz(&book);
   cleanup_sdl(&app);
