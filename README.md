@@ -35,13 +35,13 @@ pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-SDL2 mingw
     ```bash
     cd path/to/manga_reader
     ```
-3. ** Download a Font: ** Download any ttf font and place in the root directory. Rename the font file to font.ttf.
-3.  **Compile:** Run the make command:
+3.  **Download a Font:** Download any ttf font and place in the root directory. Rename the font file to font.ttf.
+4.  **Compile:** Run the make command:
     ```bash
     make
     ```
-4.  **Verify:** If successful, an executable binary named `manga_reader` (or `manga_reader.exe` on Windows) will appear in the folder.
-5.  **Rebuilding (Optional):** To remove old build files and start fresh, run:
+5.  **Verify:** If successful, an executable binary named `manga_reader` (or `manga_reader.exe` on Windows) will appear in the folder.
+6.  **Rebuilding (Optional):** To remove old build files and start fresh, run:
     ```bash
     make clean
     ```
