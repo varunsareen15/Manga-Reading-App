@@ -5,43 +5,54 @@
 
 #define DB_FILE "bookmarks.txt"
 #define TEMP_FILE "bookmarks.tmp"
-#define MAX_LINE 1024
+#define MAX_LINE 2048
 
-// Helper: Extract filename from full path (e.g. "books/manga.cbz" ->
-// "manga.cbz") This ensures that if you move the file to a different folder,
-// the bookmark still works.
-const char *get_filename(const char *path) {
-  const char *last_slash = strrchr(path, '/');
-#ifdef _WIN32
-  const char *last_backslash = strrchr(path, '\\');
-  if (last_backslash && (!last_slash || last_backslash > last_slash)) {
-    last_slash = last_backslash;
+// Helper: Generate a unique key based on Library structure
+// If path contains "library/", it returns everything after it.
+// If not, it falls back to the full path.
+void get_unique_key(const char *path, char *out_buffer, size_t size) {
+  // Normalize path separators (turn backslash into forward slash for Windows)
+  char clean_path[MAX_LINE];
+  strncpy(clean_path, path, MAX_LINE);
+
+  for (int i = 0; clean_path[i]; i++) {
+    if (clean_path[i] == '\\')
+      clean_path[i] = '/';
   }
-#endif
-  return last_slash ? last_slash + 1 : path;
+
+  // Look for "library/" marker
+  const char *marker = "/library/";
+  char *found = strstr(clean_path, marker);
+
+  if (found) {
+    // Return "manga/Series/vol.cbz"
+    strncpy(out_buffer, found + strlen(marker), size);
+  } else {
+    // Fallback: Use the full path if "library" folder isn't found
+    strncpy(out_buffer, clean_path, size);
+  }
 }
 
 int load_bookmark(const char *filepath) {
   FILE *f = fopen(DB_FILE, "r");
   if (!f)
-    return 0; // No database yet, start at page 0
+    return 0;
 
-  const char *target_name = get_filename(filepath);
+  char target_key[MAX_LINE];
+  get_unique_key(filepath, target_key, sizeof(target_key));
+
   char line[MAX_LINE];
   int saved_page = 0;
 
   while (fgets(line, sizeof(line), f)) {
-    // Format is: filename=page
     char *eq = strchr(line, '=');
     if (eq) {
-      *eq = '\0'; // Split string
-      char *name = line;
+      *eq = '\0';
+      char *key = line;
       int page = atoi(eq + 1);
+      key[strcspn(key, "\r\n")] = 0;
 
-      // Remove newline if present
-      name[strcspn(name, "\r\n")] = 0;
-
-      if (strcmp(name, target_name) == 0) {
+      if (strcmp(key, target_key) == 0) {
         saved_page = page;
         break;
       }
@@ -53,7 +64,8 @@ int load_bookmark(const char *filepath) {
 }
 
 void save_bookmark(const char *filepath, int page_index) {
-  const char *target_name = get_filename(filepath);
+  char target_key[MAX_LINE];
+  get_unique_key(filepath, target_key, sizeof(target_key));
 
   FILE *in = fopen(DB_FILE, "r");
   FILE *out = fopen(TEMP_FILE, "w");
@@ -63,7 +75,6 @@ void save_bookmark(const char *filepath, int page_index) {
   int found = 0;
   char line[MAX_LINE];
 
-  // Copy existing bookmarks, updating ours if found
   if (in) {
     while (fgets(line, sizeof(line), in)) {
       char line_copy[MAX_LINE];
@@ -72,32 +83,29 @@ void save_bookmark(const char *filepath, int page_index) {
       char *eq = strchr(line_copy, '=');
       if (eq) {
         *eq = '\0';
-        char *name = line_copy;
-        name[strcspn(name, "\r\n")] = 0;
+        char *key = line_copy;
+        key[strcspn(key, "\r\n")] = 0;
 
-        if (strcmp(name, target_name) == 0) {
-          fprintf(out, "%s=%d\n", target_name, page_index);
+        if (strcmp(key, target_key) == 0) {
+          fprintf(out, "%s=%d\n", target_key, page_index);
           found = 1;
         } else {
-          fprintf(out, "%s", line); // Copy old line
+          fprintf(out, "%s", line);
         }
       } else {
-        fprintf(out, "%s", line); // Copy malformed lines
+        fprintf(out, "%s", line);
       }
     }
     fclose(in);
   }
 
-  // If new entry, append it
   if (!found) {
-    fprintf(out, "%s=%d\n", target_name, page_index);
+    fprintf(out, "%s=%d\n", target_key, page_index);
   }
 
   fclose(out);
-
-  // Atomic replace
   remove(DB_FILE);
   rename(TEMP_FILE, DB_FILE);
 
-  printf("Saved progress: %s at page %d\n", target_name, page_index + 1);
+  printf("Saved: [%s] at page %d\n", target_key, page_index + 1);
 }

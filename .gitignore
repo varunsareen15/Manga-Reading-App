@@ -55,8 +55,8 @@ dkms.conf
 *.dwo
 
 # Misc
-manga/
 build/
 manga_reader
 font.ttf
 bookmarks.txt
+library/
