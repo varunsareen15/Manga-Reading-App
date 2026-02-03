@@ -1,6 +1,0 @@
-v005.cbz=188
-v006.cbz=184
-v007.cbz=188
-v008.cbz=184
-library/manga/Hajime no Ippo/Hajime no Ippo v001.cbz=18
-library/comic/Test/v001.cbz=13

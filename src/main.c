@@ -52,6 +52,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (init_bookmarks_db() != 0) {
+    return 1;
+  }
+
   MangaBook book;
   if (open_cbz(argv[1], &book) != 0) {
     printf("Failed to open CBZ.\n");
@@ -208,6 +212,7 @@ int main(int argc, char *argv[]) {
   }
 
   save_bookmark(argv[1], book.current_index);
+	close_bookmarks_db();
   close_cbz(&book);
   cleanup_sdl(&app);
 
