@@ -1,33 +1,51 @@
 # C Manga Reader
 
-A lightweight, cross-platform manga reader written in C. It reads `.cbz` files directly from memory, supports High-DPI (Retina) displays, and uses high-quality texture filtering for crisp text rendering.
+A lightweight, cross-platform manga reader written in C. It reads `.cbz` files directly from memory, supports High-DPI (Retina) displays, and automatically adapts controls for Manga (Right-to-Left) or Comics (Left-to-Right).
 
 ## Features
 
 * **Format Support:** Reads `.cbz` (Zip) archives containing PNG or JPG images.
-* **Zero Extraction:** Loads pages directly from RAM without extracting files to the disk.
-* **High Quality Rendering:** Uses Anisotropic/Linear filtering and High-DPI support to prevent pixelation on modern screens.
-* **Smart Navigation:** Includes "Go to Page" jump, 10-page skipping, and standard manga (RTL) controls.
-* **Page Counter:** Visual overlay showing current progress (e.g., "5 / 200").
-* **Automatic Bookmarks:** Saves page progress when you close a volume/chapter so you can pick up where you left off.
-* **Modular Architecture:** Clean separation between App Logic, Zip Handling, and Rendering.
+* **Zero Extraction:** Loads pages directly from RAM without extracting files to disk.
+* **Smart Library:** Automatically detects reading direction (Manga vs. Comic) based on file location.
+* **Context-Aware Navigation:**
+    * **Manga Mode:** Left Arrow = Next Page.
+    * **Comic Mode:** Right Arrow = Next Page.
+* **High Quality Rendering:** Uses Anisotropic filtering and High-DPI support for crisp text.
+* **Robust Bookmarks:** Uses a reliable **SQLite database** to save progress, even if the app crashes.
+* **Power Tools:** "Go to Page" jump, 10-page skipping, and fullscreen toggle.
 
 ## Prerequisites
 
-You need a C compiler (`gcc`) and the development headers for **SDL2**, **SDL2_image**, and **libzip**.
+You need a C compiler (`gcc`) and the development headers for **SDL2**, **SDL2_image**, **SDL2_ttf**, **libzip**, and **SQLite3**.
 
 ### macOS (Homebrew)
 ```bash
-brew install sdl2 sdl2_image sdl2_ttf libzip
+brew install sdl2 sdl2_image sdl2_ttf libzip sqlite
 ```
 ### Linux (Debian/Ubuntu)
 ```bash
-sudo apt-get install build-essential libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libzip-dev
+sudo apt-get install build-essential libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libzip-dev libsqlite3-dev
 ```
 ### Windows (MSYS2 MinGW 64-bit)
 ```bash
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-libzip
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-libzip mingw-w64-x86_64-sqlite3
 ```
+
+## Library Setup
+To enable **Auto-Reading Mode** (Manga vs Comic), organize your files into a `library` folder with specific subfolders:
+```text
+manga_reader/
+└── library/
+    ├── manga/   <-- Files here use Right-to-Left navigation
+    │   └── One Piece/
+    │       └── vol1.cbz
+    └── comic/   <-- Files here use Left-to-Right navigation
+        └── Batman/
+            └── issue1.cbz
+```
+
+* Manga Mode: Activated if path contains /manga/.
+* Comic Mode: Activated if path contains /comic/.
 
 ## Building the Project
 
@@ -53,11 +71,11 @@ Pass the path to a `.cbz` file as a command-line argument.
 
 ### macOS / Linux
 ```bash
-./manga_reader "path/to/my_manga.cbz"
+./manga_reader "library/manga/One Piece/vol1.cbz"
 ```
 ### Windows (PowerShell / Command Prompt)
 ```bash
-.\manga_reader.exe "path\to\my_manga.cbz"
+.\manga_reader.exe "library\comic\Batman\issue1.cbz"
 ```
 Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enclose the path in quotes.
 
@@ -65,10 +83,8 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 
 | Key | Action |
 | :--- | :--- |
-| **Left Arrow** | **Next Page** (Advances forward, Manga style) |
-| **Right Arrow** | **Previous Page** (Goes back) |
-| **Shift + Left** | **Skip Forward 10 Pages** |
-| **Shift + Right** | **Skip Backward 10 Pages** |
+| **Left/Right** | **Next/Prev Page** (Context Sensitive) |
+| **Shift + Left/Right** | **Skip 10 Pages** (Follows reading direction) |
 | **B / E** | Jump to First / Last Page |
 | **G** | **Go to Page** (Opens input box) |
 | **F** | Toggle Fullscreen Mode |
@@ -84,23 +100,23 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 
 
 ## Project Structure
-
 ```text
 manga_reader/
-├── Makefile                    # Build configuration (run 'make' here)
-├── README.md                   # Project documentation
-├── bookmarks.txt               # Database file for bookmarks (generated automatically) 
-├── font.ttf                    # Required font file (User provided)
-├── include/                    # Header files (.h)
-│   ├── bookmark_manager.h      # Definitions for Bookmarks 
-│   ├── cbz_handler.h           # Definitions for Zip extraction & Image handling
-│   └── render_engine.h         # Definitions for SDL2 windowing & texture logic
-├── src/                        # Source code (.c)
-│   ├── main.c                  # Entry point, Event Loop, & Input handling
-│   ├── bookmark_manager.c      # Logic for loading and saving bookmarks 
-│   ├── cbz_handler.c           # Logic for reading .cbz archives from memory
-│   └── render_engine.c         # Logic for high-DPI rendering & scaling
-└── build/                      # Intermediate object files (generated automatically)
+├── Makefile           # Build configuration
+├── README.md          # Documentation
+├── library.db         # SQLite Database (Auto-generated)
+├── font.ttf           # Font file (User provided)
+├── library/           # Your Manga/Comic files
+├── include/           # Header files
+│   ├── bookmark_manager.h
+│   ├── cbz_handler.h
+│   └── render_engine.h
+├── src/               # Source code
+│   ├── main.c
+│   ├── bookmark_manager.c
+│   ├── cbz_handler.c
+│   └── render_engine.c
+└── build/             # Compiled object files
 ```
 
 ## License
