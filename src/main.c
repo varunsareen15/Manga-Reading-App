@@ -1,4 +1,4 @@
-#include "bookmark_manager.h" 
+#include "bookmark_manager.h"
 #include "cbz_handler.h"
 #include "render_engine.h"
 #include <ctype.h>
@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// ... (Keep refresh_page and toggle_fullscreen exactly as they were) ...
 void refresh_page(MangaBook *book, AppContext *app) {
   size_t size;
   char *data = get_image_data(book, &size);
@@ -28,9 +29,30 @@ void toggle_fullscreen(AppContext *app) {
   }
 }
 
+// NEW: Helper to detect mode from filename
+ReadMode detect_mode(const char *path) {
+  // Normalize path just in case
+  char lower_path[1024];
+  strncpy(lower_path, path, 1023);
+  for (int i = 0; lower_path[i]; i++)
+    lower_path[i] = tolower(lower_path[i]);
+
+  if (strstr(lower_path, "/comic/") || strstr(lower_path, "\\comic\\")) {
+    printf("Detected Mode: COMIC (Left-to-Right)\n");
+    return MODE_COMIC;
+  }
+  // Default to Manga
+  printf("Detected Mode: MANGA (Right-to-Left)\n");
+  return MODE_MANGA;
+}
+
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     printf("Usage: %s <file.cbz>\n", argv[0]);
+    return 1;
+  }
+
+  if (init_bookmarks_db() != 0) {
     return 1;
   }
 
@@ -40,11 +62,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // --- NEW: Load Bookmark ---
+  // --- NEW: Auto-detect Mode ---
+  book.mode = detect_mode(argv[1]);
+
+  // Load Bookmark
   int saved_page = load_bookmark(argv[1]);
   if (saved_page > 0 && saved_page < book.count) {
     book.current_index = saved_page;
-    printf("Resuming %s at page %d\n", argv[1], saved_page + 1);
+    printf("Resuming at page %d\n", saved_page + 1);
   }
 
   AppContext app;
@@ -59,8 +84,6 @@ int main(int argc, char *argv[]) {
   int running = 1;
   SDL_Event event;
   char overlay_text[32];
-
-  // Input Mode State
   int input_mode = 0;
   char input_buffer[10] = "";
 
@@ -69,6 +92,7 @@ int main(int argc, char *argv[]) {
       if (event.type == SDL_QUIT) {
         running = 0;
       } else if (input_mode) {
+        // ... (Keep input mode logic exactly same as before) ...
         if (event.type == SDL_TEXTINPUT) {
           if (isdigit(event.text.text[0]) && strlen(input_buffer) < 5) {
             strcat(input_buffer, event.text.text);
@@ -103,24 +127,51 @@ int main(int argc, char *argv[]) {
         int shift = SDL_GetModState() & KMOD_SHIFT;
 
         switch (event.key.keysym.sym) {
+        // --- SMART NAVIGATION ---
         case SDLK_LEFT:
-          if (shift) {
-            book.current_index += 10;
-            if (book.current_index >= book.count)
-              book.current_index = book.count - 1;
+          // If Manga: Left is NEXT
+          // If Comic: Left is PREV
+          if (book.mode == MODE_MANGA) {
+            if (shift) {
+              book.current_index += 10;
+              if (book.current_index >= book.count)
+                book.current_index = book.count - 1;
+            } else {
+              next_page(&book);
+            }
           } else {
-            next_page(&book);
+            // Comic Mode
+            if (shift) {
+              book.current_index -= 10;
+              if (book.current_index < 0)
+                book.current_index = 0;
+            } else {
+              prev_page(&book);
+            }
           }
           changed = 1;
           break;
 
         case SDLK_RIGHT:
-          if (shift) {
-            book.current_index -= 10;
-            if (book.current_index < 0)
-              book.current_index = 0;
+          // If Manga: Right is PREV
+          // If Comic: Right is NEXT
+          if (book.mode == MODE_MANGA) {
+            if (shift) {
+              book.current_index -= 10;
+              if (book.current_index < 0)
+                book.current_index = 0;
+            } else {
+              prev_page(&book);
+            }
           } else {
-            prev_page(&book);
+            // Comic Mode
+            if (shift) {
+              book.current_index += 10;
+              if (book.current_index >= book.count)
+                book.current_index = book.count - 1;
+            } else {
+              next_page(&book);
+            }
           }
           changed = 1;
           break;
@@ -133,17 +184,14 @@ int main(int argc, char *argv[]) {
           book.current_index = book.count - 1;
           changed = 1;
           break;
-
         case SDLK_g:
           input_mode = 1;
           input_buffer[0] = '\0';
           SDL_StartTextInput();
           break;
-
         case SDLK_f:
           toggle_fullscreen(&app);
           break;
-
         case SDLK_ESCAPE:
           if (SDL_GetWindowFlags(app.window) & SDL_WINDOW_FULLSCREEN_DESKTOP) {
             SDL_SetWindowFullscreen(app.window, 0);
@@ -163,9 +211,8 @@ int main(int argc, char *argv[]) {
     render_frame(&app, overlay_text, input_mode ? input_buffer : NULL);
   }
 
-  // --- NEW: Save Bookmark on Exit ---
   save_bookmark(argv[1], book.current_index);
-
+	close_bookmarks_db();
   close_cbz(&book);
   cleanup_sdl(&app);
 

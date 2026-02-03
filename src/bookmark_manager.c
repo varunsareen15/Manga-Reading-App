@@ -1,103 +1,110 @@
 #include "bookmark_manager.h"
+#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-#define DB_FILE "bookmarks.txt"
-#define TEMP_FILE "bookmarks.tmp"
-#define MAX_LINE 1024
+#define DB_FILE "library.db"
+#define MAX_PATH 2048
 
-// Helper: Extract filename from full path (e.g. "books/manga.cbz" ->
-// "manga.cbz") This ensures that if you move the file to a different folder,
-// the bookmark still works.
-const char *get_filename(const char *path) {
-  const char *last_slash = strrchr(path, '/');
-#ifdef _WIN32
-  const char *last_backslash = strrchr(path, '\\');
-  if (last_backslash && (!last_slash || last_backslash > last_slash)) {
-    last_slash = last_backslash;
+static sqlite3 *db = NULL;
+
+// Helper: Normalize path to be relative to "library/"
+void get_unique_key(const char *path, char *out_buffer, size_t size) {
+  char clean_path[MAX_PATH];
+  strncpy(clean_path, path, MAX_PATH);
+
+  // Normalize slashes
+  for (int i = 0; clean_path[i]; i++) {
+    if (clean_path[i] == '\\')
+      clean_path[i] = '/';
   }
-#endif
-  return last_slash ? last_slash + 1 : path;
+
+  const char *marker = "/library/";
+  char *found = strstr(clean_path, marker);
+
+  if (found) {
+    strncpy(out_buffer, found + strlen(marker), size);
+  } else {
+    strncpy(out_buffer, clean_path, size);
+  }
+}
+
+int init_bookmarks_db() {
+  int rc = sqlite3_open(DB_FILE, &db);
+  if (rc) {
+    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+
+  // Create table if not exists
+  const char *sql = "CREATE TABLE IF NOT EXISTS bookmarks ("
+                    "path TEXT PRIMARY KEY, "
+                    "page INTEGER, "
+                    "last_read TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                    ");";
+
+  char *err_msg = 0;
+  rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "SQL error: %s\n", err_msg);
+    sqlite3_free(err_msg);
+    return -1;
+  }
+  return 0;
+}
+
+void close_bookmarks_db() {
+  if (db)
+    sqlite3_close(db);
 }
 
 int load_bookmark(const char *filepath) {
-  FILE *f = fopen(DB_FILE, "r");
-  if (!f)
-    return 0; // No database yet, start at page 0
+  if (!db)
+    return 0;
 
-  const char *target_name = get_filename(filepath);
-  char line[MAX_LINE];
-  int saved_page = 0;
+  char key[MAX_PATH];
+  get_unique_key(filepath, key, sizeof(key));
 
-  while (fgets(line, sizeof(line), f)) {
-    // Format is: filename=page
-    char *eq = strchr(line, '=');
-    if (eq) {
-      *eq = '\0'; // Split string
-      char *name = line;
-      int page = atoi(eq + 1);
+  const char *sql = "SELECT page FROM bookmarks WHERE path = ?;";
+  sqlite3_stmt *stmt;
 
-      // Remove newline if present
-      name[strcspn(name, "\r\n")] = 0;
+  int page = 0;
 
-      if (strcmp(name, target_name) == 0) {
-        saved_page = page;
-        break;
-      }
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, key, -1, SQLITE_STATIC);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      page = sqlite3_column_int(stmt, 0);
     }
   }
-
-  fclose(f);
-  return saved_page;
+  sqlite3_finalize(stmt);
+  return page;
 }
 
 void save_bookmark(const char *filepath, int page_index) {
-  const char *target_name = get_filename(filepath);
-
-  FILE *in = fopen(DB_FILE, "r");
-  FILE *out = fopen(TEMP_FILE, "w");
-  if (!out)
+  if (!db)
     return;
 
-  int found = 0;
-  char line[MAX_LINE];
+  char key[MAX_PATH];
+  get_unique_key(filepath, key, sizeof(key));
 
-  // Copy existing bookmarks, updating ours if found
-  if (in) {
-    while (fgets(line, sizeof(line), in)) {
-      char line_copy[MAX_LINE];
-      strcpy(line_copy, line);
+  // INSERT OR REPLACE updates the row if it exists, or creates it if it
+  // doesn't.
+  const char *sql = "INSERT OR REPLACE INTO bookmarks (path, page, last_read) "
+                    "VALUES (?, ?, CURRENT_TIMESTAMP);";
+  sqlite3_stmt *stmt;
 
-      char *eq = strchr(line_copy, '=');
-      if (eq) {
-        *eq = '\0';
-        char *name = line_copy;
-        name[strcspn(name, "\r\n")] = 0;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, key, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, page_index);
 
-        if (strcmp(name, target_name) == 0) {
-          fprintf(out, "%s=%d\n", target_name, page_index);
-          found = 1;
-        } else {
-          fprintf(out, "%s", line); // Copy old line
-        }
-      } else {
-        fprintf(out, "%s", line); // Copy malformed lines
-      }
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+      fprintf(stderr, "Failed to save bookmark: %s\n", sqlite3_errmsg(db));
+    } else {
+      printf("Saved (DB): [%s] at page %d\n", key, page_index + 1);
     }
-    fclose(in);
   }
-
-  // If new entry, append it
-  if (!found) {
-    fprintf(out, "%s=%d\n", target_name, page_index);
-  }
-
-  fclose(out);
-
-  // Atomic replace
-  remove(DB_FILE);
-  rename(TEMP_FILE, DB_FILE);
-
-  printf("Saved progress: %s at page %d\n", target_name, page_index + 1);
+  sqlite3_finalize(stmt);
 }

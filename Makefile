@@ -1,7 +1,6 @@
 CC = gcc
-# Add sdl2_ttf to pkg-config
-PKG_CFLAGS = $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf libzip)
-PKG_LIBS = $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf libzip)
+PKG_CFLAGS = $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf libzip sqlite3)
+PKG_LIBS = $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf libzip sqlite3)
 
 CFLAGS = -Wall -g -Iinclude $(PKG_CFLAGS)
 LIBS = $(PKG_LIBS)
