@@ -44,6 +44,8 @@ int get_scaled_height(AppContext *ctx, int slot, ManhwaScale scale_mode);
 
 void render_frame(AppContext *ctx, const char *overlay_text,
                   const char *input_text, ViewMode mode, ManhwaScale scale_mode,
-                  PageDir dir, int show_help, int scroll_y, ReadMode book_mode);
+                  PageDir dir, int show_help, int scroll_y, ReadMode book_mode,
+                  const char *popup_message); 
 
+void render_popup(AppContext *ctx, const char *message);
 #endif

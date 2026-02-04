@@ -241,12 +241,13 @@ void draw_ui(AppContext *ctx, const char *overlay_text,
 
 void render_frame(AppContext *ctx, const char *overlay_text,
                   const char *input_text, ViewMode mode, ManhwaScale scale_mode,
-                  PageDir dir, int show_help, int scroll_y,
-                  ReadMode book_mode) {
+                  PageDir dir, int show_help, int scroll_y, ReadMode book_mode,
+                  const char *popup_message) {
 
   SDL_SetRenderDrawColor(ctx->renderer, 30, 30, 30, 255);
   SDL_RenderClear(ctx->renderer);
 
+  // 1. HELP MENU (Exclusive View)
   if (show_help) {
     render_help_menu(ctx, book_mode);
     SDL_RenderPresent(ctx->renderer);
@@ -280,7 +281,7 @@ void render_frame(AppContext *ctx, const char *overlay_text,
       SDL_RenderCopyF(ctx->renderer, ctx->tex_curr, NULL, &dest);
     }
 
-    // --- B. Draw Next Page (Bottom) ---
+    // --- B. Draw Next Page (Below) ---
     if (ctx->tex_next) {
       int curr_h = get_scaled_height(ctx, 0, scale_mode);
       int w, h;
@@ -300,7 +301,7 @@ void render_frame(AppContext *ctx, const char *overlay_text,
       SDL_RenderCopyF(ctx->renderer, ctx->tex_next, NULL, &dest);
     }
 
-    // --- C. Draw Prev Page (Top) ---
+    // --- C. Draw Prev Page (Above) ---
     if (ctx->tex_prev) {
       int prev_h = get_scaled_height(ctx, -1, scale_mode);
       int w, h;
@@ -325,7 +326,6 @@ void render_frame(AppContext *ctx, const char *overlay_text,
   // ==========================================
   else {
     // --- SINGLE VIEW ---
-    // Note: We use tex_curr as Primary. tex_next acts as Secondary.
     if (mode == VIEW_SINGLE || !ctx->tex_next) {
       if (ctx->tex_curr) {
         int w, h;
@@ -377,6 +377,56 @@ void render_frame(AppContext *ctx, const char *overlay_text,
     }
   }
 
+  // 3. UI OVERLAYS (Page Count, Input Box)
   draw_ui(ctx, overlay_text, input_text);
+
+  // 4. POPUP MESSAGE (New!)
+  if (popup_message) {
+    render_popup(ctx, popup_message);
+  }
+
+  // 5. PRESENT FRAME (Only called once!)
   SDL_RenderPresent(ctx->renderer);
+}
+
+void render_popup(AppContext *ctx, const char *message) {
+  if (!ctx->font)
+    return;
+
+  int win_w, win_h;
+  SDL_GetRendererOutputSize(ctx->renderer, &win_w, &win_h);
+  SDL_Color white = {255, 255, 255, 255};
+  SDL_Color black = {0, 0, 0, 255};
+  SDL_Color accent = {100, 149, 237, 255}; // Cornflower Blue
+
+  SDL_Surface *s = TTF_RenderText_Blended(ctx->font, message, white);
+  if (s) {
+    SDL_Texture *t = SDL_CreateTextureFromSurface(ctx->renderer, s);
+
+    int box_w = s->w + 40;
+    int box_h = s->h + 40;
+    SDL_Rect box = {(win_w - box_w) / 2, (win_h - box_h) / 2, box_w, box_h};
+
+    // Draw Shadow
+    SDL_Rect shadow = {box.x + 5, box.y + 5, box.w, box.h};
+    SDL_SetRenderDrawColor(ctx->renderer, 0, 0, 0, 100);
+    SDL_SetRenderDrawBlendMode(ctx->renderer, SDL_BLENDMODE_BLEND);
+    SDL_RenderFillRect(ctx->renderer, &shadow);
+
+    // Draw Box Background
+    SDL_SetRenderDrawColor(ctx->renderer, 30, 30, 30, 255);
+    SDL_SetRenderDrawBlendMode(ctx->renderer, SDL_BLENDMODE_NONE);
+    SDL_RenderFillRect(ctx->renderer, &box);
+
+    // Draw Border
+    SDL_SetRenderDrawColor(ctx->renderer, accent.r, accent.g, accent.b, 255);
+    SDL_RenderDrawRect(ctx->renderer, &box);
+
+    // Draw Text
+    SDL_Rect text_dest = {box.x + 20, box.y + 20, s->w, s->h};
+    SDL_RenderCopy(ctx->renderer, t, NULL, &text_dest);
+
+    SDL_FreeSurface(s);
+    SDL_DestroyTexture(t);
+  }
 }

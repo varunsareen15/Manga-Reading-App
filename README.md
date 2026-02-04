@@ -14,6 +14,7 @@ A lightweight, cross-platform manga reader written in C. It reads `.cbz` files d
     * **Manhwa:** Down Arrow / Mouse Wheel = Scroll Down.
 * **High Quality Rendering:** Uses Anisotropic filtering and High-DPI support for crisp text.
 * **Robust Bookmarks:** Uses a reliable **SQLite database** to save progress and exact scroll position.
+* **Seamless Volume Switching:** Automatically detects the next file in the folder and prompts you to continue when you reach the last page.
 * **Viewing Modes:**
     * **Standard:** Single Page, Double Page, and Double Page (Cover Offset).
     * **Webtoon:** Fit Height (Whole Page) or Fit Width (Zoomed Scroll).
@@ -58,6 +59,23 @@ manga_reader/
 * Comic Mode: Activated if path contains /comic/.
 * Manhua Mode: Activated if path contains /manhua/.
 * Manhwa Mode: Activated if path contains /manhwa/ (or /webtoon/).
+
+## File Naming Convention (Auto-Next)
+
+To use the "Next Volume" feature, your files must be named sequentially. The reader sorts files alphabetically.
+
+**Important:** Use **Zero-Padding** for numbers to ensure correct order.
+
+* ✅ **Good:** `vol01.cbz`, `vol02.cbz`, ... `vol10.cbz`
+* ❌ **Bad:** `vol1.cbz`, `vol2.cbz`, ... `vol10.cbz` (Computer sorting places `10` before `2`)
+
+**Example Structure:**
+```text
+library/manga/Naruto/
+├── v01.cbz
+├── v02.cbz
+└── v03.cbz
+```
 
 ## Building the Project
 
@@ -121,6 +139,8 @@ The controls change automatically depending on the type of book you are reading.
 | **F** | Toggle Fullscreen |
 | **H** | Toggle Help Menu |
 | **ESC** | Cancel Input / Exit Fullscreen / Quit |
+
+> **Next Volume Navigation:** When you reach the last page of a book, press the **Next Page** key again (Left for Manga, Right for Comic) to open the "End of Volume" prompt. Press it one more time to confirm and load the next file.
 
 ### Inside "Go to Page" Mode
 | Key | Action |
