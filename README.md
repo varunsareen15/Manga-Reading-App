@@ -12,7 +12,7 @@ A lightweight, cross-platform manga reader written in C. It reads `.cbz` files d
     * **Comic Mode:** Right Arrow = Next Page.
 * **High Quality Rendering:** Uses Anisotropic filtering and High-DPI support for crisp text.
 * **Robust Bookmarks:** Uses a reliable **SQLite database** to save progress, even if the app crashes.
-* **Power Tools:** "Go to Page" jump, 10-page skipping, and fullscreen toggle.
+* **Power Tools:** "Go to Page" jump, 10-page skipping, single/double page toggles (title page included/not included) and fullscreen toggle.
 
 ## Prerequisites
 
@@ -88,6 +88,10 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 | **B / E** | Jump to First / Last Page |
 | **G** | **Go to Page** (Opens input box) |
 | **F** | Toggle Fullscreen Mode |
+| **S** | Toggle Single Page |
+| **D** | Toggle Double Page |
+| **Shift + D** | Toggle Double Page (Title Page Seperated) |
+| **H** | Help Menu |
 | **ESC** | Cancel Input / Exit Fullscreen / Quit |
 
 ### Inside "Go to Page" Mode
