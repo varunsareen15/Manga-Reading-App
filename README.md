@@ -1,18 +1,22 @@
 # C Manga Reader
 
-A lightweight, cross-platform manga reader written in C. It reads `.cbz` files directly from memory, supports High-DPI (Retina) displays, and automatically adapts controls for Manga (Right-to-Left) or Comics (Left-to-Right).
+A lightweight, cross-platform manga reader written in C. It reads `.cbz` files directly from memory, supports High-DPI (Retina) displays, and automatically adapts controls for **Manga** (Right-to-Left), **Comics** (Left-to-Right), **Manhua** (Left-to-Right) or **Manhwa/Webtoons** (Vertical Scroll).
 
 ## Features
 
 * **Format Support:** Reads `.cbz` (Zip) archives containing PNG or JPG images.
 * **Zero Extraction:** Loads pages directly from RAM without extracting files to disk.
-* **Smart Library:** Automatically detects reading direction (Manga vs. Comic) based on file location.
+* **Smart Library:** Automatically detects reading direction based on file location (Manga, Comic, Manhwa/Webtoon).
+* **Infinite Scrolling:** Supports **continuous vertical scrolling** for Webtoons (seamlessly stitches pages together).
 * **Context-Aware Navigation:**
-    * **Manga Mode:** Left Arrow = Next Page.
-    * **Comic Mode:** Right Arrow = Next Page.
+    * **Manga:** Left Arrow = Next Page.
+    * **Comic/Manhua:** Right Arrow = Next Page.
+    * **Manhwa:** Down Arrow / Mouse Wheel = Scroll Down.
 * **High Quality Rendering:** Uses Anisotropic filtering and High-DPI support for crisp text.
-* **Robust Bookmarks:** Uses a reliable **SQLite database** to save progress, even if the app crashes.
-* **Power Tools:** "Go to Page" jump, 10-page skipping, single/double page toggles (title page included/not included) and fullscreen toggle.
+* **Robust Bookmarks:** Uses a reliable **SQLite database** to save progress and exact scroll position.
+* **Viewing Modes:**
+    * **Standard:** Single Page, Double Page, and Double Page (Cover Offset).
+    * **Webtoon:** Fit Height (Whole Page) or Fit Width (Zoomed Scroll).
 
 ## Prerequisites
 
@@ -36,16 +40,24 @@ To enable **Auto-Reading Mode** (Manga vs Comic), organize your files into a `li
 ```text
 manga_reader/
 └── library/
-    ├── manga/   <-- Files here use Right-to-Left navigation
+    ├── manga/   <-- Right-to-Left (Standard Manga)
     │   └── One Piece/
     │       └── vol1.cbz
-    └── comic/   <-- Files here use Left-to-Right navigation
-        └── Batman/
-            └── issue1.cbz
+    ├── comic/   <-- Left-to-Right (Western Comics)
+    │   └── Batman/
+    │       └── issue1.cbz
+    ├── manhua/  <-- Left-to-Right (Chinese Manhua)
+    │   └── Tales of Demons/
+    │       └── ch1.cbz
+    └── manhwa/  <-- Vertical Scroll (Korean Webtoons)
+        └── Solo Leveling/
+            └── ch1.cbz
 ```
 
 * Manga Mode: Activated if path contains /manga/.
 * Comic Mode: Activated if path contains /comic/.
+* Manhua Mode: Activated if path contains /manhua/.
+* Manhwa Mode: Activated if path contains /manhwa/ (or /webtoon/).
 
 ## Building the Project
 
@@ -81,17 +93,33 @@ Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enc
 
 ## Controls
 
+The controls change automatically depending on the type of book you are reading.
+
+### Standard Mode (Manga / Comic / Manhua)
 | Key | Action |
 | :--- | :--- |
-| **Left/Right** | **Next/Prev Page** (Context Sensitive) |
-| **Shift + Left/Right** | **Skip 10 Pages** (Follows reading direction) |
-| **B / E** | Jump to First / Last Page |
+| **Left / Right** | **Next / Prev Page** (Context Sensitive) |
+| **Shift + Arrows** | **Skip 10 Pages** (Follows reading direction) |
+| **S** | **Single Page View** |
+| **D** | **Double Page View** (Standard 0-1, 2-3) |
+| **Shift + D** | **Double Page View** (Cover Offset 1-2, 3-4) |
+
+### Webtoon Mode (Manhwa)
+| Key | Action |
+| :--- | :--- |
+| **Down / MouseWheel** | **Scroll Down** (Seamlessly loads next page) |
+| **Up / MouseWheel** | **Scroll Up** |
+| **Left / Right** | **Jump to Prev / Next Page** |
+| **S** | **Fit Height** (Fit whole page on screen) |
+| **D** | **Fit Width** (Zoomed in for scrolling) |
+
+### Global Shortcuts
+| Key | Action |
+| :--- | :--- |
 | **G** | **Go to Page** (Opens input box) |
-| **F** | Toggle Fullscreen Mode |
-| **S** | Toggle Single Page |
-| **D** | Toggle Double Page |
-| **Shift + D** | Toggle Double Page (Title Page Seperated) |
-| **H** | Help Menu |
+| **B / E** | Jump to **Beginning / End** |
+| **F** | Toggle Fullscreen |
+| **H** | Toggle Help Menu |
 | **ESC** | Cancel Input / Exit Fullscreen / Quit |
 
 ### Inside "Go to Page" Mode
