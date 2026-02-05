@@ -9,35 +9,31 @@
 
 // --- Global State ---
 ViewMode view_mode = VIEW_SINGLE;
-ManhwaScale manhwa_scale = SCALE_FIT_HEIGHT; // Default Manhwa scaling ('s')
+ManhwaScale manhwa_scale = SCALE_FIT_HEIGHT;
 int show_help = 0;
-int scroll_y = 0; // Vertical scroll offset (pixels)
+int scroll_y = 0;
 
 // --- File Navigation State ---
-char current_file_path[1024]; // Track current file for saving bookmarks
-int prompt_next = 0;          // 0=None, 1=Next Volume, -1=Prev Volume
-char next_file_path[1024];    // Stores the detected next file
+char current_file_path[1024];
+int prompt_next = 0;
+char next_file_path[1024];
 
-// Helper: Reset scroll when jumping to a fresh page/file
 void reset_view() {
   scroll_y = 0;
   prompt_next = 0;
 }
 
-// Helper: Switch to a completely new CBZ file
 void load_new_file(MangaBook *book, AppContext *app, const char *new_path) {
-  // 1. Save progress of the OLD file
   save_bookmark(current_file_path, book->current_index);
   close_cbz(book);
 
-  // 2. Open NEW file
   if (open_cbz(new_path, book) != 0) {
     printf("Failed to open %s\n", new_path);
     exit(1);
   }
   strncpy(current_file_path, new_path, 1023);
 
-  // 3. Auto-detect Mode
+  // Auto-detect Mode
   char lower[1024];
   strncpy(lower, new_path, 1023);
   for (int i = 0; lower[i]; i++)
@@ -52,22 +48,18 @@ void load_new_file(MangaBook *book, AppContext *app, const char *new_path) {
   else
     book->mode = MODE_MANGA;
 
-  // 4. Set Defaults based on Mode
   if (book->mode == MODE_MANHWA) {
     view_mode = VIEW_MANHWA;
     manhwa_scale = SCALE_FIT_HEIGHT;
   } else {
-    view_mode = VIEW_SINGLE; // Reset to single for standard books
+    view_mode = VIEW_SINGLE;
   }
 
-  // 5. Load Bookmark for NEW file
   int saved = load_bookmark(new_path);
   book->current_index = (saved > 0 && saved < book->count) ? saved : 0;
-
   reset_view();
 }
 
-// Helper: Load images into the Sliding Window
 void refresh_page(MangaBook *book, AppContext *app) {
   size_t size;
   char *data;
@@ -78,12 +70,13 @@ void refresh_page(MangaBook *book, AppContext *app) {
   if (data)
     free(data);
 
-  // 2. NEXT (Slot 1)
+  // 2. NEXT
   int load_next = (view_mode == VIEW_MANHWA || view_mode == VIEW_DOUBLE);
   if (view_mode == VIEW_DOUBLE_COVER && book->current_index > 0)
     load_next = 1;
 
   if (load_next && (book->current_index + 1 < book->count)) {
+    // Temporarily increment to load next
     book->current_index++;
     data = get_image_data(book, &size);
     load_texture_to_slot(app, data, size, 1);
@@ -94,7 +87,7 @@ void refresh_page(MangaBook *book, AppContext *app) {
     load_texture_to_slot(app, NULL, 0, 1);
   }
 
-  // 3. PREVIOUS (Slot -1)
+  // 3. PREVIOUS
   if (view_mode == VIEW_MANHWA && book->current_index > 0) {
     book->current_index--;
     data = get_image_data(book, &size);
@@ -125,7 +118,6 @@ ReadMode detect_mode(const char *path) {
   strncpy(lower, path, 1023);
   for (int i = 0; lower[i]; i++)
     lower[i] = tolower(lower[i]);
-
   if (strstr(lower, "manhwa") || strstr(lower, "webtoon"))
     return MODE_MANHWA;
   if (strstr(lower, "manhua"))
@@ -141,7 +133,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // --- Init ---
   if (init_bookmarks_db() != 0)
     return 1;
 
@@ -180,17 +171,13 @@ int main(int argc, char *argv[]) {
     // --- Continuous Scroll Logic ---
     if (view_mode == VIEW_MANHWA && !prompt_next) {
       int curr_h = get_scaled_height(&app, 0, manhwa_scale);
-
-      // Scroll Down / Next Page Logic
       if (curr_h > 0 && scroll_y >= curr_h) {
         if (book.current_index < book.count - 1) {
           book.current_index++;
           scroll_y -= curr_h;
           refresh_page(&book, &app);
         }
-      }
-      // Scroll Up / Prev Page Logic
-      else if (scroll_y < 0) {
+      } else if (scroll_y < 0) {
         if (book.current_index > 0) {
           int prev_h = get_scaled_height(&app, -1, manhwa_scale);
           book.current_index--;
@@ -205,22 +192,14 @@ int main(int argc, char *argv[]) {
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT)
         running = 0;
-
-      // --- Mouse Wheel ---
       else if (e.type == SDL_MOUSEWHEEL && view_mode == VIEW_MANHWA &&
                !input_mode && !show_help && !prompt_next) {
         scroll_y -= e.wheel.y * SCROLL_STEP;
-      }
-
-      // --- Help Menu ---
-      else if (show_help) {
+      } else if (show_help) {
         if (e.type == SDL_KEYDOWN &&
             (e.key.keysym.sym == SDLK_h || e.key.keysym.sym == SDLK_ESCAPE))
           show_help = 0;
-      }
-
-      // --- Input Box ---
-      else if (input_mode) {
+      } else if (input_mode) {
         if (e.type == SDL_TEXTINPUT) {
           if (isdigit(e.text.text[0]) && strlen(input_buf) < 5)
             strcat(input_buf, e.text.text);
@@ -243,22 +222,18 @@ int main(int argc, char *argv[]) {
               input_buf[l - 1] = 0;
           }
         }
-      }
-
-      // --- Normal Navigation ---
-      else if (e.type == SDL_KEYDOWN) {
-        // If prompting, ESC cancels it
+      } else if (e.type == SDL_KEYDOWN) {
         if (prompt_next != 0 && e.key.keysym.sym == SDLK_ESCAPE) {
           prompt_next = 0;
         } else {
           int changed = 0;
           int shift = SDL_GetModState() & KMOD_SHIFT;
+          // CALCULATE STEP
           int step =
               (view_mode == VIEW_SINGLE || view_mode == VIEW_MANHWA) ? 1 : 2;
           int left_is_next = (book.mode == MODE_MANGA);
 
           switch (e.key.keysym.sym) {
-          // --- SCROLL KEYS ---
           case SDLK_DOWN:
             if (view_mode == VIEW_MANHWA)
               scroll_y += SCROLL_STEP;
@@ -271,8 +246,8 @@ int main(int argc, char *argv[]) {
           // --- LEFT ARROW ---
           case SDLK_LEFT:
             if (left_is_next) {
-              // MANGA: LEFT = NEXT
-              if (prompt_next == 1) { // Confirm Next
+              // MANGA NEXT
+              if (prompt_next == 1) {
                 if (get_neighbor_file(current_file_path, 1, next_file_path,
                                       1024)) {
                   load_new_file(&book, &app, next_file_path);
@@ -281,18 +256,23 @@ int main(int argc, char *argv[]) {
               } else if (prompt_next == -1) {
                 prompt_next = 0;
               } else {
-                if (book.current_index >= book.count - 1) {
+                // CHECK BOUNDS USING STEP
+                if (book.current_index + step >= book.count) {
                   if (get_neighbor_file(current_file_path, 1, next_file_path,
                                         1024))
                     prompt_next = 1;
+                  else {
+                    book.current_index = book.count - 1;
+                    changed = 1;
+                  } // Clamp to end
                 } else {
-                  next_page(&book);
+                  book.current_index += step;
                   changed = 1;
                 }
               }
             } else {
-              // COMIC: LEFT = PREV
-              if (prompt_next == -1) { // Confirm Prev
+              // COMIC PREV
+              if (prompt_next == -1) {
                 if (get_neighbor_file(current_file_path, -1, next_file_path,
                                       1024)) {
                   load_new_file(&book, &app, next_file_path);
@@ -306,7 +286,9 @@ int main(int argc, char *argv[]) {
                                         1024))
                     prompt_next = -1;
                 } else {
-                  prev_page(&book);
+                  book.current_index -= step;
+                  if (book.current_index < 0)
+                    book.current_index = 0;
                   changed = 1;
                 }
               }
@@ -316,8 +298,8 @@ int main(int argc, char *argv[]) {
           // --- RIGHT ARROW ---
           case SDLK_RIGHT:
             if (!left_is_next) {
-              // COMIC: RIGHT = NEXT
-              if (prompt_next == 1) { // Confirm Next
+              // COMIC NEXT
+              if (prompt_next == 1) {
                 if (get_neighbor_file(current_file_path, 1, next_file_path,
                                       1024)) {
                   load_new_file(&book, &app, next_file_path);
@@ -326,18 +308,22 @@ int main(int argc, char *argv[]) {
               } else if (prompt_next == -1) {
                 prompt_next = 0;
               } else {
-                if (book.current_index >= book.count - 1) {
+                if (book.current_index + step >= book.count) {
                   if (get_neighbor_file(current_file_path, 1, next_file_path,
                                         1024))
                     prompt_next = 1;
+                  else {
+                    book.current_index = book.count - 1;
+                    changed = 1;
+                  }
                 } else {
-                  next_page(&book);
+                  book.current_index += step;
                   changed = 1;
                 }
               }
             } else {
-              // MANGA: RIGHT = PREV
-              if (prompt_next == -1) { // Confirm Prev
+              // MANGA PREV
+              if (prompt_next == -1) {
                 if (get_neighbor_file(current_file_path, -1, next_file_path,
                                       1024)) {
                   load_new_file(&book, &app, next_file_path);
@@ -351,7 +337,9 @@ int main(int argc, char *argv[]) {
                                         1024))
                     prompt_next = -1;
                 } else {
-                  prev_page(&book);
+                  book.current_index -= step;
+                  if (book.current_index < 0)
+                    book.current_index = 0;
                   changed = 1;
                 }
               }
@@ -417,10 +405,19 @@ int main(int argc, char *argv[]) {
             break;
           }
 
+          // --- ALIGNMENT CORRECTION ---
+          // 1. Double Cover Mode: Ensure we land on Odd numbers (1, 3, 5...)
           if ((view_mode == VIEW_DOUBLE_COVER) && book.current_index > 0 &&
               book.current_index % 2 == 0) {
             book.current_index--;
           }
+          // 2. Standard Double Mode: Ensure we land on Even numbers (0,
+          // 2, 4...)
+          else if (view_mode == VIEW_DOUBLE && book.current_index % 2 != 0) {
+            // If we are at 1, we want 0. If 3, we want 2.
+            book.current_index--;
+          }
+
           if (changed)
             refresh_page(&book, &app);
         }
@@ -430,7 +427,6 @@ int main(int argc, char *argv[]) {
     snprintf(overlay, 32, "%d / %d", book.current_index + 1, book.count);
     PageDir p_dir = (book.mode == MODE_MANGA) ? DIR_MANGA : DIR_COMIC;
 
-    // --- PREPARE POPUP MESSAGE ---
     const char *popup_msg = NULL;
     if (prompt_next == 1)
       popup_msg = "End of Volume. Press Next again to continue.";
@@ -442,7 +438,6 @@ int main(int argc, char *argv[]) {
                  popup_msg);
   }
 
-  // Cleanup
   save_bookmark(current_file_path, book.current_index);
   close_bookmarks_db();
   close_cbz(&book);

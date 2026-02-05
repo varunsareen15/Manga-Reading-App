@@ -396,7 +396,6 @@ void render_popup(AppContext *ctx, const char *message) {
   int win_w, win_h;
   SDL_GetRendererOutputSize(ctx->renderer, &win_w, &win_h);
   SDL_Color white = {255, 255, 255, 255};
-  SDL_Color black = {0, 0, 0, 255};
   SDL_Color accent = {100, 149, 237, 255}; // Cornflower Blue
 
   SDL_Surface *s = TTF_RenderText_Blended(ctx->font, message, white);
