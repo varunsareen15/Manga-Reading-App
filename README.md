@@ -2,6 +2,8 @@
 
 A lightweight, cross-platform manga reader written in C. It reads `.cbz` files directly from memory, supports High-DPI (Retina) displays, and automatically adapts controls for **Manga** (Right-to-Left), **Comics** (Left-to-Right), **Manhua** (Left-to-Right) or **Manhwa/Webtoons** (Vertical Scroll).
 
+Includes a built-in **Komga server integration** with a graphical library browser, page streaming, downloads, and two-way read progress syncing.
+
 ## Features
 
 * **Format Support:** Reads `.cbz` (Zip) archives containing PNG or JPG images.
@@ -18,25 +20,30 @@ A lightweight, cross-platform manga reader written in C. It reads `.cbz` files d
 * **Viewing Modes:**
     * **Standard:** Single Page, Double Page, and Double Page (Cover Offset).
     * **Webtoon:** Fit Height (Whole Page) or Fit Width (Zoomed Scroll).
+* **Komga Integration:**
+    * Browse your Komga libraries with a graphical cover art grid.
+    * Stream pages directly from the server — no downloads required.
+    * Download volumes as `.cbz` for offline reading.
+    * Two-way read progress sync with Komga (works with Paperback, KMReader, and other Komga-compatible apps).
 
 ## Prerequisites
 
-You need a C compiler (`gcc`) and the development headers for **SDL2**, **SDL2_image**, **SDL2_ttf**, **libzip**, and **SQLite3**.
+You need a C compiler (`gcc`) and the development headers for **SDL2**, **SDL2_image**, **SDL2_ttf**, **libzip**, **SQLite3**, and **libcurl**.
 
 ### macOS (Homebrew)
 ```bash
-brew install sdl2 sdl2_image sdl2_ttf libzip sqlite
+brew install sdl2 sdl2_image sdl2_ttf libzip sqlite curl
 ```
 ### Linux (Debian/Ubuntu)
 ```bash
-sudo apt-get install build-essential libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libzip-dev libsqlite3-dev
+sudo apt-get install build-essential libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libzip-dev libsqlite3-dev libcurl4-openssl-dev
 ```
 ### Windows (MSYS2 MinGW 64-bit)
 ```bash
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-libzip mingw-w64-x86_64-sqlite3
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf mingw-w64-x86_64-libzip mingw-w64-x86_64-sqlite3 mingw-w64-x86_64-curl
 ```
 
-## Library Setup
+## Library Setup (Local Files)
 To enable **Auto-Reading Mode** (Manga vs Comic), organize your files into a `library` folder with specific subfolders:
 ```text
 manga_reader/
@@ -60,14 +67,46 @@ manga_reader/
 * Manhua Mode: Activated if path contains /manhua/.
 * Manhwa Mode: Activated if path contains /manhwa/ (or /webtoon/).
 
+## Komga Server Setup
+
+To connect to a [Komga](https://komga.org/) media server, create a config file:
+
+```bash
+mkdir -p ~/.config/manga_reader
+```
+
+Create `~/.config/manga_reader/config.ini`:
+```ini
+[komga]
+url = http://<your-server-ip>:25600
+api_key = <your-komga-api-key>
+
+[downloads]
+path = ./downloads
+```
+
+**Getting an API key:** In the Komga web UI, go to your user settings and generate an API key.
+
+**Reading mode detection:** The reader auto-detects the mode from your Komga library names — name them `manga`, `manhwa`, `manhua`, or `comics` to match the correct reading direction.
+
+### Cross-Device Sync
+
+Read progress is synced to the Komga server, so you can pick up where you left off on any device. Compatible Komga clients include:
+
+| Platform | App |
+| :--- | :--- |
+| **Desktop** | This reader, Komga web UI |
+| **iOS** | Paperback, KMReader, Komic |
+| **Android** | Mihon (formerly Tachiyomi) |
+
 ## File Naming Convention (Auto-Next)
 
 To use the "Next Volume" feature, your files must be named sequentially. The reader sorts files alphabetically.
 
 **Important:** Use **Zero-Padding** for numbers to ensure correct order.
 
-* ✅ **Good:** `vol01.cbz`, `vol02.cbz`, ... `vol10.cbz`
-* ❌ **Bad:** `vol1.cbz`, `vol2.cbz`, ... `vol10.cbz` (Computer sorting places `10` before `2`)
+* **Good:** `vol01.cbz`, `vol02.cbz`, ... `vol10.cbz`
+* **Bad:** `vol1.cbz`, `vol2.cbz`, ... `vol10.cbz` (Computer sorting places `10` before `2`)
 
 **Example Structure:**
 ```text
@@ -97,17 +136,28 @@ library/manga/Naruto/
 
 ## How to Run
 
+### Local File Mode
 Pass the path to a `.cbz` file as a command-line argument.
 
-### macOS / Linux
 ```bash
 ./manga_reader "library/manga/One Piece/vol1.cbz"
 ```
-### Windows (PowerShell / Command Prompt)
+
+### Komga Browser Mode
+Run with no arguments (requires config file):
+
 ```bash
-.\manga_reader.exe "library\comic\Batman\issue1.cbz"
+./manga_reader
 ```
-Note: If your filename contains spaces (e.g., One Piece Vol 1.cbz), you must enclose the path in quotes.
+
+This opens a graphical library browser with your Komga libraries as tabs.
+
+### Direct Komga Book Mode
+Open a specific Komga book by ID:
+
+```bash
+./manga_reader --book <komga-book-id>
+```
 
 ## Controls
 
@@ -138,9 +188,9 @@ The controls change automatically depending on the type of book you are reading.
 | **B / E** | Jump to **Beginning / End** |
 | **F** | Toggle Fullscreen |
 | **H** | Toggle Help Menu |
-| **ESC** | Cancel Input / Exit Fullscreen / Quit |
+| **ESC** | Cancel Input / Exit Fullscreen / Back / Quit |
 
-> **Next Volume Navigation:** When you reach the last page of a book, press the **Next Page** key again (Left for Manga, Right for Comic) to open the "End of Volume" prompt. Press it one more time to confirm and load the next file.
+> **Next Volume Navigation:** When you reach the last page of a book, press the **Next Page** key again (Left for Manga, Right for Comic) to open the "End of Volume" prompt. Press it one more time to confirm and load the next file. In Komga mode, this loads the next book from the series.
 
 ### Inside "Go to Page" Mode
 | Key | Action |
@@ -150,25 +200,47 @@ The controls change automatically depending on the type of book you are reading.
 | **Backspace** | Delete Digit |
 | **ESC** | Cancel |
 
+### Library Browser Controls
+| Key | Action |
+| :--- | :--- |
+| **Arrow Keys** | Navigate cover grid |
+| **Enter / Click** | Open series or read book |
+| **D** | Download selected book as `.cbz` |
+| **Tab / 1-4** | Switch library tab |
+| **PageUp / PageDown** | Paginate results |
+| **Backspace / ESC** | Go back / Quit |
+| **Mouse Wheel** | Scroll grid |
 
 ## Project Structure
 ```text
 manga_reader/
-├── Makefile           # Build configuration
-├── README.md          # Documentation
-├── library.db         # SQLite Database (Auto-generated)
-├── font.ttf           # Font file (User provided)
-├── library/           # Your Manga/Comic files
-├── include/           # Header files
+├── Makefile              # Build configuration
+├── README.md             # Documentation
+├── library.db            # SQLite Database (Auto-generated)
+├── font.ttf              # Font file (User provided)
+├── library/              # Your local Manga/Comic files
+├── vendor/
+│   └── cJSON/            # Vendored JSON parser
+├── include/              # Header files
 │   ├── bookmark_manager.h
+│   ├── browser_ui.h
 │   ├── cbz_handler.h
+│   ├── config.h
+│   ├── file_utils.h
+│   ├── komga_client.h
+│   ├── page_provider.h
 │   └── render_engine.h
-├── src/               # Source code
-│   ├── main.c
-│   ├── bookmark_manager.c
-│   ├── cbz_handler.c
-│   └── render_engine.c
-└── build/             # Compiled object files
+├── src/                  # Source code
+│   ├── main.c            # Entry point and reader loops
+│   ├── bookmark_manager.c # SQLite bookmarks + Komga progress sync
+│   ├── browser_ui.c      # Komga library browser UI
+│   ├── cbz_handler.c     # CBZ/ZIP file handling
+│   ├── config.c          # INI config parser
+│   ├── file_utils.c      # Local file navigation
+│   ├── komga_client.c    # Komga REST API client
+│   ├── page_provider.c   # Abstraction: local CBZ or Komga stream
+│   └── render_engine.c   # SDL2 rendering engine
+└── build/                # Compiled object files
 ```
 
 ## License
