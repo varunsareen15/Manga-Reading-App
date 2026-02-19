@@ -101,6 +101,21 @@ void load_texture_to_slot(AppContext *ctx, char *buffer, size_t size,
   }
 }
 
+SDL_Texture *render_text_texture(SDL_Renderer *renderer, TTF_Font *font,
+                                 const char *text, SDL_Color color, int *out_w,
+                                 int *out_h) {
+  SDL_Surface *surf = TTF_RenderText_Blended(font, text, color);
+  if (!surf)
+    return NULL;
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
+  if (out_w)
+    *out_w = surf->w;
+  if (out_h)
+    *out_h = surf->h;
+  SDL_FreeSurface(surf);
+  return tex;
+}
+
 // --- 2. HELPER FUNCTIONS ---
 
 // Calculates the on-screen height of a texture based on the current scaling

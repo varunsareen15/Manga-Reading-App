@@ -13,4 +13,8 @@ void save_bookmark(const char *filepath, int page_index);
 // Close the database connection (call at app exit)
 void close_bookmarks_db();
 
+// Komga progress sync
+void save_komga_progress(const char *book_id, int page, int completed);
+int load_komga_progress(const char *book_id, int *out_page, int *out_completed);
+
 #endif

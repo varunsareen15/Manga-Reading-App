@@ -52,6 +52,21 @@ int init_bookmarks_db() {
     sqlite3_free(err_msg);
     return -1;
   }
+
+  // Komga progress table
+  const char *sql2 = "CREATE TABLE IF NOT EXISTS komga_progress ("
+                     "book_id TEXT PRIMARY KEY, "
+                     "page INTEGER, "
+                     "completed INTEGER DEFAULT 0, "
+                     "last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                     ");";
+  rc = sqlite3_exec(db, sql2, 0, 0, &err_msg);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "SQL error: %s\n", err_msg);
+    sqlite3_free(err_msg);
+    return -1;
+  }
+
   return 0;
 }
 
@@ -107,4 +122,44 @@ void save_bookmark(const char *filepath, int page_index) {
     }
   }
   sqlite3_finalize(stmt);
+}
+
+void save_komga_progress(const char *book_id, int page, int completed) {
+  if (!db)
+    return;
+
+  const char *sql =
+      "INSERT OR REPLACE INTO komga_progress (book_id, page, completed, "
+      "last_synced) VALUES (?, ?, ?, CURRENT_TIMESTAMP);";
+  sqlite3_stmt *stmt;
+
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, book_id, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, page);
+    sqlite3_bind_int(stmt, 3, completed);
+    sqlite3_step(stmt);
+  }
+  sqlite3_finalize(stmt);
+}
+
+int load_komga_progress(const char *book_id, int *out_page,
+                        int *out_completed) {
+  if (!db)
+    return -1;
+
+  const char *sql =
+      "SELECT page, completed FROM komga_progress WHERE book_id = ?;";
+  sqlite3_stmt *stmt;
+  int found = -1;
+
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+    sqlite3_bind_text(stmt, 1, book_id, -1, SQLITE_STATIC);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      *out_page = sqlite3_column_int(stmt, 0);
+      *out_completed = sqlite3_column_int(stmt, 1);
+      found = 0;
+    }
+  }
+  sqlite3_finalize(stmt);
+  return found;
 }

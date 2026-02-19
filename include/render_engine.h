@@ -48,4 +48,9 @@ void render_frame(AppContext *ctx, const char *overlay_text,
                   const char *popup_message); 
 
 void render_popup(AppContext *ctx, const char *message);
+
+// Helper: create a text texture (caller must SDL_DestroyTexture)
+SDL_Texture *render_text_texture(SDL_Renderer *renderer, TTF_Font *font,
+                                 const char *text, SDL_Color color, int *out_w,
+                                 int *out_h);
 #endif
