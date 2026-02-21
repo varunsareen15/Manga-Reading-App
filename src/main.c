@@ -186,6 +186,9 @@ void refresh_page_komga(PageProvider *prov, AppContext *app) {
   snprintf(title, sizeof(title), "%s - Page %d / %d [Komga]", mode_str,
            prov->current_index + 1, prov->count);
   SDL_SetWindowTitle(app->window, title);
+
+  // Signal prefetch thread to preload upcoming pages
+  provider_notify_prefetch(prov);
 }
 
 // ==========================================================

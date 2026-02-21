@@ -2,8 +2,8 @@ CC = gcc
 PKG_CFLAGS = $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf libzip sqlite3 libcurl)
 PKG_LIBS = $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf libzip sqlite3 libcurl)
 
-CFLAGS = -Wall -g -Iinclude -Ivendor/cJSON $(PKG_CFLAGS)
-LIBS = $(PKG_LIBS)
+CFLAGS = -Wall -g -Iinclude -Ivendor/cJSON $(PKG_CFLAGS) -pthread
+LIBS = $(PKG_LIBS) -pthread
 
 SRC_DIR = src
 VENDOR_DIR = vendor/cJSON

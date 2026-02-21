@@ -20,9 +20,9 @@ int init_sdl(AppContext *ctx, int width, int height) {
   if (TTF_Init() == -1)
     return -1;
 
-  ctx->font = TTF_OpenFont("font.ttf", 24);
+  ctx->font = TTF_OpenFont("/home/varun/Repos/Manga-Reading-App/font.ttf", 24);
   if (!ctx->font)
-    printf("Warning: font.ttf not found.\n");
+    printf("Warning: /home/varun/Repos/Manga-Reading-App/font.ttf not found.\n");
 
   ctx->window =
       SDL_CreateWindow("Modular Manga Reader", SDL_WINDOWPOS_CENTERED,
